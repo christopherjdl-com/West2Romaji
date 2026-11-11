@@ -1,4 +1,4 @@
-As seen in <a href="https://www.youtube.com/watch?v=Q8mMPJ-hZeA&amp;t=38s"><img src="youtube-badge.png" width="471" alt="CJCloudAI: I created an app to speak Japanese in a second"></a>
+As seen in <a href="https://www.youtube.com/watch?v=Q8mMPJ-hZeA&amp;t=38s"><img src="youtube-badge.png" width="757" alt="CJCloudAI: I created an app to speak Japanese in a second"></a>
 
 # West2Romaji
 
