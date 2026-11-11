@@ -1,4 +1,4 @@
-As seen in [![CJCloudAI: I created an app to speak Japanese in a second](https://img.shields.io/badge/CJCloudAI-I_created_an_app_to_speak_Japanese_in_a_second-f5f5f5?style=flat&labelColor=000&logo=youtube&logoColor=FF0000)](https://www.youtube.com/watch?v=Q8mMPJ-hZeA&t=38s)
+As seen in <a href="https://www.youtube.com/watch?v=Q8mMPJ-hZeA&amp;t=38s"><img src="youtube-badge.png" width="363" alt="CJCloudAI: I created an app to speak Japanese in a second"></a>
 
 # West2Romaji
 
