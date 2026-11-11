@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  West2Romaji. The phone signs each request. This stack keeps the model
+  keys in Secrets Manager. The function flips a coin between Bedrock and a
+  direct call. Bedrock then flips between Claude Haiku and Nova Lite.
+  A direct call flips between Gemini and xAI. An empty xAI key uses Gemini.
+  A failed Gemini call flips again on Bedrock.
+
+Parameters:
+  Project:
+    Type: String
+    Default: west2romaji
+    AllowedValues:
+      - west2romaji
+    Description: Fixed prefix for every name in the stack.
+  XaiModel:
+    Type: String
+    Default: grok-4.7
+    AllowedPattern: "^[A-Za-z0-9._-]{1,80}$"
+    Description: xAI chat model. Used when the direct-call raffle picks xAI.
+  GeminiModel:
+    Type: String
+    Default: gemini-3.5-flash-lite
+    AllowedPattern: "^gemini-[A-Za-z0-9._-]{1,72}$"
+    Description: Gemini model. Used when the direct-call raffle picks Gemini.
+  RoleNameSuffix:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^-[a-z0-9-]{1,32}$"
+    Description: >
+      Optional suffix for the Lambda role. Leave this empty in Paris so
+      the role stays west2romaji-translate. IAM role names are global, so
+      the Tokyo deploy passes a suffix such as -ap-northeast-1.
+
+Mappings:
+  BedrockModels:
+    ap-northeast-1:
+      Claude: jp.anthropic.claude-haiku-4-5-20251001-v1:0
+      Nova: amazon.nova-lite-v1:0
+    eu-west-3:
+      Claude: eu.anthropic.claude-haiku-4-5-20251001-v1:0
+      Nova: eu.amazon.nova-lite-v1:0
+
+Resources:
+  Secret:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: modules/secret.yaml
+      Parameters:
+        Project: !Ref Project
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: ManagedBy
+          Value: cloudformation
+
+  Registry:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: modules/registry.yaml
+      Parameters:
+        Project: !Ref Project
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: ManagedBy
+          Value: cloudformation
+
+  Api:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: modules/api.yaml
+      Parameters:
+        Project: !Ref Project
+        XaiModel: !Ref XaiModel
+        GeminiModel: !Ref GeminiModel
+        ClaudeModelId: !FindInMap [BedrockModels, !Ref "AWS::Region", Claude]
+        NovaModelId: !FindInMap [BedrockModels, !Ref "AWS::Region", Nova]
+        RoleNameSuffix: !Ref RoleNameSuffix
+        SecretArn: !GetAtt Secret.Outputs.SecretArn
+        GeminiSecretArn: !GetAtt Secret.Outputs.GeminiSecretArn
+        TableName: !GetAtt Registry.Outputs.TableName
+        TableArn: !GetAtt Registry.Outputs.TableArn
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: ManagedBy
+          Value: cloudformation
+
+Outputs:
+  FunctionUrl:
+    Description: Lambda function URL. No API key. The phone signs each call.
+    Value: !GetAtt Api.Outputs.FunctionUrl
+  EnrollUrl:
+    Value: !GetAtt Api.Outputs.EnrollUrl
+  TranslateUrl:
+    Value: !GetAtt Api.Outputs.TranslateUrl
+  SecretArn:
+    Description: Where the xAI key lives. The key itself is not an output.
+    Value: !GetAtt Secret.Outputs.SecretArn
+  GeminiSecretArn:
+    Description: Where the Gemini key lives. The key itself is not an output.
+    Value: !GetAtt Secret.Outputs.GeminiSecretArn
+  TableName:
+    Value: !GetAtt Registry.Outputs.TableName

@@ -1,0 +1,3 @@
+# Local paths are uploaded by `aws cloudformation package` in the deploy workflow.
+ignore_checks:
+  - W3002

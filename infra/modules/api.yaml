@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  The function and its public function URL. There is no API Gateway and no
+  API key. AuthType NONE means AWS does not ask for a key. The function
+  rejects any request the enrolled phone did not sign.
+
+Parameters:
+  Project:
+    Type: String
+    AllowedValues:
+      - west2romaji
+  XaiModel:
+    Type: String
+    Default: grok-4.7
+    AllowedPattern: "^[A-Za-z0-9._-]{1,80}$"
+  GeminiModel:
+    Type: String
+    Default: gemini-3.5-flash-lite
+    AllowedPattern: "^gemini-[A-Za-z0-9._-]{1,72}$"
+  ClaudeModelId:
+    Type: String
+    AllowedPattern: "^[A-Za-z0-9.:-]{1,128}$"
+  NovaModelId:
+    Type: String
+    AllowedPattern: "^[A-Za-z0-9.:-]{1,128}$"
+  SecretArn:
+    Type: String
+  GeminiSecretArn:
+    Type: String
+  TableName:
+    Type: String
+  TableArn:
+    Type: String
+  RoleNameSuffix:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^-[a-z0-9-]{1,32}$"
+    Description: >
+      Leave empty in Paris. Tokyo passes a suffix such as -ap-northeast-1
+      so its role name does not replace the live Paris role.
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${Project}-translate"
+      RetentionInDays: 14
+
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-translate${RoleNameSuffix}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: translate
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadModelKeys
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref SecretArn
+                  - !Ref GeminiSecretArn
+              - Sid: EnrollmentAndReplay
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !Ref TableArn
+              - Sid: WriteLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogGroup.Arn
+              - Sid: InvokeBedrock
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${ClaudeModelId}"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/${NovaModelId}"
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/${NovaModelId}"
+                  - arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:ap-northeast-1::foundation-model/amazon.nova-lite-v1:0
+                  - arn:aws:bedrock:ap-northeast-3::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-central-1::foundation-model/amazon.nova-lite-v1:0
+                  - arn:aws:bedrock:eu-north-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-north-1::foundation-model/amazon.nova-lite-v1:0
+                  - arn:aws:bedrock:eu-south-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-south-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-west-1::foundation-model/amazon.nova-lite-v1:0
+                  - arn:aws:bedrock:eu-west-3::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+                  - arn:aws:bedrock:eu-west-3::foundation-model/amazon.nova-lite-v1:0
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: ManagedBy
+          Value: cloudformation
+
+  Function:
+    Type: AWS::Lambda::Function
+    DependsOn: LogGroup
+    Properties:
+      FunctionName: !Sub "${Project}-translate"
+      Description: Checks the enrolled phone, then asks Bedrock, xAI, or Gemini.
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Handler: handler.lambda_handler
+      Role: !GetAtt Role.Arn
+      Timeout: 45
+      MemorySize: 256
+      ReservedConcurrentExecutions: 2
+      Code: ../lambda/translate/dist
+      Environment:
+        Variables:
+          SECRET_ID: !Ref SecretArn
+          GEMINI_SECRET_ID: !Ref GeminiSecretArn
+          TABLE_NAME: !Ref TableName
+          XAI_MODEL: !Ref XaiModel
+          GEMINI_MODEL: !Ref GeminiModel
+          BEDROCK_CLAUDE_MODEL: !Ref ClaudeModelId
+          BEDROCK_NOVA_MODEL: !Ref NovaModelId
+          XAI_URL: https://api.x.ai/v1/chat/completions
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: ManagedBy
+          Value: cloudformation
+
+  FunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref Function
+      AuthType: NONE
+      InvokeMode: BUFFERED
+      Cors:
+        AllowCredentials: false
+        AllowMethods:
+          - POST
+        AllowHeaders:
+          - content-type
+          - x-west2romaji-timestamp
+          - x-west2romaji-signature
+        AllowOrigins:
+          - "*"
+        MaxAge: 300
+
+  UrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName: !Ref Function
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Function
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
+Outputs:
+  FunctionUrl:
+    Description: Public function URL. It ends with a slash and has no API key.
+    Value: !GetAtt FunctionUrl.FunctionUrl
+  EnrollUrl:
+    Value: !Sub
+      - "${Base}enroll"
+      - Base: !GetAtt FunctionUrl.FunctionUrl
+  TranslateUrl:
+    Value: !Sub
+      - "${Base}translate"
+      - Base: !GetAtt FunctionUrl.FunctionUrl

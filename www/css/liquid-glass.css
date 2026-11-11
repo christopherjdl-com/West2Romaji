@@ -1,0 +1,121 @@
+/*
+ * Liquid glass surfaces for West2Romaji.
+ *
+ * Adapted from @dpawlikowski/liquid-glass 0.3.0 (MIT).
+ * Copyright (c) 2026 liquid-glass contributors.
+ * Refraction also follows the feTurbulence + feDisplacementMap approach
+ * shown in Sachin Kizhakkepurath’s “iOS Liquid Glass” CodePen.
+ *
+ * WKWebView note: Safari parses `backdrop-filter: url(#filter)` and then
+ * drops the whole declaration, which would take the blur with it. The
+ * displacement filter is applied with CSS `filter` on a copied scene layer.
+ * `backdrop-filter` itself stays a live blur + saturate, which WebKit does
+ * render. Scale stays at 16 so the displacement does not tear.
+ */
+
+@property --lg-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.5;
+}
+
+.liquid-glass-filter-root {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+:root {
+  --lg-filter: url("#liquid-glass-filter");
+  --lg-blur: 22px;
+  --lg-saturate: 185%;
+  --lg-opacity: 0.5;
+  --lg-radius: 26px;
+  --lg-border-opacity: 0.55;
+  --lg-tint: 255 255 255;
+  --lg-shadow: 0 18px 50px rgb(28 40 70 / 0.16);
+  --lg-edge-red: rgb(255 130 160 / 0.28);
+  --lg-edge-cyan: rgb(130 210 255 / 0.22);
+  --lg-scene-background: transparent;
+}
+
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--lg-radius);
+  border: 1px solid rgb(255 255 255 / var(--lg-border-opacity));
+  background: linear-gradient(
+    145deg,
+    rgb(var(--lg-tint) / 0.34),
+    rgb(var(--lg-tint) / 0.08) 42%,
+    rgb(var(--lg-tint) / 0.16)
+  );
+  box-shadow:
+    var(--lg-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.66),
+    inset 0 -1px 0 rgb(255 255 255 / 0.12);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(1.06);
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate)) brightness(1.06);
+}
+
+.liquid-glass::before,
+.liquid-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.liquid-glass::before {
+  z-index: -1;
+  background: rgb(var(--lg-tint) / var(--lg-opacity));
+}
+
+.liquid-glass::after {
+  z-index: 3;
+  box-shadow:
+    inset 1px 0 var(--lg-edge-red),
+    inset -1px 0 var(--lg-edge-cyan),
+    inset 0 1px rgb(255 255 255 / 0.55);
+  background: linear-gradient(115deg, rgb(255 255 255 / 0.28), transparent 28%, transparent 62%, rgb(255 255 255 / 0.1));
+  mix-blend-mode: soft-light;
+}
+
+.liquid-glass__content {
+  position: relative;
+  z-index: 2;
+}
+
+.liquid-glass__refraction {
+  position: absolute;
+  z-index: -2;
+  inset: -28px;
+  background: var(--lg-scene-background);
+  background-position: center;
+  background-size: cover;
+  filter: var(--lg-filter);
+  opacity: 0.9;
+  transform: scale(1.04);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, transparent 46%, #000 78%);
+  mask-image: radial-gradient(ellipse at 50% 30%, transparent 46%, #000 78%);
+}
+
+.liquid-glass--plain .liquid-glass__refraction {
+  display: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid-glass {
+    background: rgb(var(--lg-tint) / 0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass,
+  .liquid-glass * {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  One enrolled phone, plus short-lived signature records in the same table.
+  CloudFormation owns the table. It does not own the row the phone writes.
+
+Parameters:
+  Project:
+    Type: String
+    Default: west2romaji
+    AllowedValues:
+      - west2romaji
+
+Resources:
+  Devices:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${Project}-devices"
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - AttributeName: device_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: device_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: !Ref Project
+        - Key: ManagedBy
+          Value: cloudformation
+
+Outputs:
+  TableName:
+    Value: !Ref Devices
+  TableArn:
+    Value: !GetAtt Devices.Arn

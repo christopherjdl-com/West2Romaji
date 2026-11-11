@@ -1,0 +1,39 @@
+{
+  "name": "west2romaji",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Translate any written language into Japanese romaji. A Cordova app for iPhone.",
+  "scripts": {
+    "test": "node --experimental-detect-module --test test/*.test.js",
+    "start": "node scripts/debug-server.mjs",
+    "icons": "node scripts/make-icons.js",
+    "ios:add": "cordova platform add ios",
+    "ios:prepare": "cordova prepare ios",
+    "ios:build": "cordova build ios"
+  },
+  "cordova": {
+    "platforms": [
+      "ios"
+    ],
+    "plugins": {
+      "cordova-plugin-secure-storage-echo": {},
+      "cordova-plugin-advanced-http": {},
+      "cordova-plugin-network-information": {},
+      "cordova-plugin-statusbar": {},
+      "cordova-plugin-device": {},
+      "cordova-plugin-file": {},
+      "cordova-plugin-taptic-engine": {}
+    }
+  },
+  "devDependencies": {
+    "cordova": "^12.0.0",
+    "cordova-ios": "^8.1.1",
+    "cordova-plugin-advanced-http": "^3.3.1",
+    "cordova-plugin-device": "^3.0.0",
+    "cordova-plugin-file": "^8.1.3",
+    "cordova-plugin-network-information": "^3.0.0",
+    "cordova-plugin-secure-storage-echo": "^5.1.1",
+    "cordova-plugin-statusbar": "^4.0.0",
+    "cordova-plugin-taptic-engine": "^2.2.0"
+  }
+}

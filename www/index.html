@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#e6eef8" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>West2Romaji</title>
+  <link rel="icon" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link rel="stylesheet" href="css/liquid-glass.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; connect-src 'self' https://api.x.ai https:; img-src 'self' data:; font-src 'self'; media-src 'self';" />
+  <script src="js/boot.js"></script>
+  <script src="cordova.js"></script>
+</head>
+<body>
+  <div class="scene" aria-hidden="true">
+    <span class="orb orb-a"></span>
+    <span class="orb orb-b"></span>
+    <span class="orb orb-c"></span>
+  </div>
+
+  <div class="app" id="app">
+    <header class="nav">
+      <div>
+        <h1>West2Romaji</h1>
+        <p class="lede">Any language in. Something you can say.</p>
+      </div>
+      <button class="icon-btn" id="settings-open" type="button" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"></path>
+        </svg>
+      </button>
+    </header>
+
+    <main class="main" id="view-translate">
+      <section class="composer liquid-glass">
+        <span class="liquid-glass__refraction" aria-hidden="true"></span>
+        <div class="liquid-glass__content">
+          <label class="sr" for="source">Phrase</label>
+          <textarea id="source" rows="4" maxlength="600" placeholder="Where is the station?" autocomplete="off"></textarea>
+          <div class="composer-meta">
+            <span id="composer-hint">Language is picked up from what you type.</span>
+            <span id="word-count"></span>
+          </div>
+        </div>
+      </section>
+
+      <button class="primary liquid-glass liquid-glass--plain" id="translate" type="button" disabled>
+        <span class="primary-simmer" aria-hidden="true"></span>
+        <span class="liquid-glass__content" id="translate-label">Translate</span>
+      </button>
+      <p class="sr" id="translate-status" aria-live="polite"></p>
+
+      <p class="error" id="error" role="alert" hidden></p>
+
+      <article class="result pending" id="result-pending" hidden aria-hidden="true">
+        <span class="shimmer-bar shimmer-bar-kicker"></span>
+        <span class="shimmer-bar shimmer-bar-line"></span>
+        <span class="shimmer-bar shimmer-bar-kicker"></span>
+        <span class="shimmer-bar shimmer-bar-short"></span>
+      </article>
+
+      <article class="result liquid-glass" id="result" hidden>
+        <span class="liquid-glass__refraction" aria-hidden="true"></span>
+        <div class="liquid-glass__content">
+          <p class="kicker">Romaji</p>
+          <p class="romaji" id="romaji" aria-live="polite"></p>
+          <p class="kicker kicker-ja">Japanese</p>
+          <p class="japanese" id="japanese" lang="ja"></p>
+          <div class="result-actions">
+            <button class="ghost" id="copy-romaji" type="button"><span>Copy romaji</span></button>
+            <button class="ghost" id="copy-japanese" type="button"><span>Copy Japanese</span></button>
+          </div>
+          <p class="meta-row">
+            <span class="model-mark" id="model-mark" hidden></span>
+            <span class="meta" id="result-meta"></span>
+          </p>
+        </div>
+      </article>
+
+      <section class="recent" id="recent" hidden>
+        <div class="recent-head"><h2>Recent</h2></div>
+        <div id="recent-list"></div>
+      </section>
+    </main>
+
+    <main class="main" id="view-history" hidden>
+      <div class="section-head">
+        <h2>History</h2>
+        <button class="text-btn" id="clear-history" type="button" hidden>Clear</button>
+      </div>
+      <p class="empty" id="history-empty">Translations stay on this iPhone, and they open with no connection.</p>
+      <div id="history-list"></div>
+    </main>
+
+    <nav class="tabbar liquid-glass liquid-glass--plain" aria-label="Sections">
+      <div class="liquid-glass__content">
+        <button id="tab-translate" type="button" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="M5 7h9M5 12h14M5 17h9"></path>
+          </svg>
+          <span>Translate</span>
+        </button>
+        <button id="tab-history" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="7.5"></circle>
+            <path d="M12 8.5V12l2.5 2"></path>
+          </svg>
+          <span>History</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <div class="sheet" id="settings" hidden>
+    <div class="sheet-card liquid-glass" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <span class="liquid-glass__refraction" aria-hidden="true"></span>
+      <div class="liquid-glass__content">
+        <div class="grabber" aria-hidden="true"></div>
+        <div class="sheet-head">
+          <h2 id="settings-title">Settings</h2>
+          <button class="text-btn" id="settings-close" type="button">Done</button>
+        </div>
+
+        <fieldset class="field">
+          <legend class="field-label">Appearance</legend>
+          <div class="segment" role="radiogroup" aria-label="Appearance">
+            <label><input type="radio" name="theme" value="system" /><span>System</span></label>
+            <label><input type="radio" name="theme" value="light" /><span>Light</span></label>
+            <label><input type="radio" name="theme" value="dark" /><span>Dark</span></label>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast liquid-glass liquid-glass--plain" id="toast" hidden role="status">
+    <div class="liquid-glass__content">
+      <span id="toast-text">Phrase removed</span>
+      <button id="toast-undo" type="button">Undo</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
